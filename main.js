@@ -1,218 +1,181 @@
+//all main veriables 
+let symbols = ['bicycle', 'bicycle', 'leaf', 'leaf', 'cube', 'cube', 'anchor', 'anchor', 'paper-plane-o', 'paper-plane-o', 'bolt', 'bolt', 'bomb', 'bomb', 'diamond', 'diamond'],
+		opened = [],
+		match = 0,
+		moves = 0,
+		clicks = 0,
+		$deck = jQuery('.deck'),
+		$scorePanel = $('#score-panel'),
+		$moveNum = $('.moves'),
+		$ratingStars = $('i'),
+		$restart = $('.restart'),
+		timer;
+		
+let gameTimer = () => {
+	let startTime = new Date().getTime();
 
+	// Update the timer every second
+	timer = setInterval(() => {
 
+		let now = new Date().getTime();
 
-var deck = ["fa-diamond", "fa-diamond", "fa-paper-plane-o", "fa-paper-plane-o", "fa-anchor", "fa-anchor",
-           "fa-bolt", "fa-bolt", "fa-cube", "fa-cube", "fa-leaf", "fa-leaf",
-           "fa-bicycle", "fa-bicycle", "fa-bomb", "fa-bomb"];
+		// Find the time elapsed between now and start
+		let elapsed = now - startTime;
 
-// Game state variables
-var open = [];
-var matched = 0;
-var moveCounter = 0;
-var numStars = 3;
-var timer = {
-    seconds: 0,
-    minutes: 0,
-    clearTime: -1
+		// Calculate minutes and seconds
+		let minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+		let seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+
+		// Add starting 0 if seconds < 10
+		if (seconds < 10) {
+			seconds = "0" + seconds;
+		}
+
+		let currentTime = minutes + ':' + seconds;
+
+		// Update clock on game screen and modal
+		$(".clock").text(currentTime);
+	}, 750);
 };
 
-// max number of moves for each star
-var hard = 15;
-var medium = 20;
+// Initialize Memory Game
+let init = ()=> {
+  let cards = shuffle(symbols);
+  $deck.empty();
+  match = 0;
+  moves = 0;
+  $moveNum.text('0');
+  $ratingStars.removeClass('fa-star-o').addClass('fa-star');
+	for (let i = 0; i < cards.length; i++) {
+		$deck.append($('<li class="card"><i class="fa fa-' + cards[i] + '"></i></li>'))
+	}
+	addClkListener();
+	$(".clock").text("0:00");
+	
+};
 
-var modal = $("#win-modal");
 
-// Interval function to be called every second, increments timer and updates HTML
-var startTimer = function() {
-    if (timer.seconds === 59) {
-        timer.minutes++;
-        timer.seconds = 0;
-    } else {
-        timer.seconds++;
-    }
-
-// Ensure that single digit seconds are preceded with a 0
-var formattedSec = "0";
-if (timer.seconds < 10) {
-        formattedSec += timer.seconds
-} else {
-        formattedSec = String(timer.seconds);
+let shuffle = (array)=> {
+  let index = array.length, temp, randomIndex;
+  while (0 !== index) {
+    randomIndex = Math.floor(Math.random() * index);
+    index -= 1;
+    temp = array[index];
+    array[index] = array[randomIndex];
+    array[randomIndex] = temp;
+  }
+  return array;
 }
 
-var time = String(timer.minutes) + ":" + formattedSec;
-    $(".timer").text(time);
+// Set Rating and final Score
+let setRating =(moves)=> {
+	let score = 3;
+	if(moves <= 10) {
+		$ratingStars.eq(3).removeClass('fa-star').addClass('fa-star-o');
+		score = 3;
+	} else if (moves > 10 && moves <= 14) {
+		$ratingStars.eq(2).removeClass('fa-star').addClass('fa-star-o');
+		score = 2;
+	} else if (moves > 14) {
+		$ratingStars.eq(1).removeClass('fa-star').addClass('fa-star-o');
+		score = 1;
+	}
+	return { score };
 };
 
-// Resets timer state and restarts timer
-function resetTimer() {
-    clearInterval(timer.clearTime);
-    timer.seconds = 0;
-    timer.minutes = 0;
-    $(".timer").text("0:00");
-
-    timer.clearTime = setInterval(startTimer, 1000);
-};
-
-// Shuffle function from http://stackoverflow.com/a/2450976
-function shuffle(array) {
-    var currentIndex = array.length, temporaryValue, randomIndex;
-
-    while (currentIndex !== 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex -= 1;
-        temporaryValue = array[currentIndex];
-        array[currentIndex] = array[randomIndex];
-        array[randomIndex] = temporaryValue;
-    }
-    return array;
+// End The Memory Game
+// Open Popup for showing required details 
+// On configuaration, show default view
+let endGame = (moves, score) => {
+	let msg = score == 1 ? score + ' Star' :score +' Stars';
+	swal({
+		allowEscapeKey: false,
+		allowOutsideClick: false,
+		title: 'Congratulations! You Won!',
+		text: 'With ' + moves + ' Moves and ' + msg + '\n Woooooo!',
+		type: 'success',
+		confirmButtonColor: '#02ccba',
+		confirmButtonText: 'Play again!'
+	}).then((isConfirm)=> {
+		if (isConfirm) {
+			clicks = 0;
+			clearInterval(timer);
+			init();
+		}
+	})
 }
 
-// Randomizes cards on board and updates card HTML
-function updateCards() {
-    deck = shuffle(deck);
-    var index = 0;
-    $.each($(".card i"), function(){
-      $(this).attr("class", "fa " + deck[index]);
-      index++;
-    });
-    resetTimer();
+let addClkListener = ()=> {
+	// Card click listner for flipping card
+	$deck.find('.card:not(".match, .open")').bind('click' , function() {
+		clicks++ ;
+		clicks == 1 ? gameTimer() :'';
+		// Check for call to be heppend before all dom update
+		if($('.show').length > 1) { return true; };
+		let $this = $(this), card = $this.context.innerHTML;
+		// Check if the player has clicked the same card
+		if($this.hasClass('open')){ return true;};
+	  $this.addClass('open show');
+		opened.push(card);
+		// Check with opened card
+		// Add view changes in cards
+		// Remove css animation classes
+	  if (opened.length > 1) {
+	    if (card === opened[0]) {
+	      $deck.find('.open').addClass('match animated infinite rubberBand');
+	      setTimeout(()=> {
+	        $deck.find('.match').removeClass('open show animated infinite rubberBand');
+	      }, 800);
+	      match++;
+	    } else {
+	      $deck.find('.open').addClass('notmatch animated infinite wobble');
+				setTimeout(()=> {
+					$deck.find('.open').removeClass('animated infinite wobble');
+				}, 800 / 1.5);
+	      setTimeout(()=> {
+	        $deck.find('.open').removeClass('open show notmatch animated infinite wobble');
+	      }, 800);
+	    }
+	    opened = [];
+			moves++;
+			setRating(moves);
+			$moveNum.html(moves);
+	  }
+		
+		// End Memory Game if all cards matched
+		if (match === 8) {
+			setRating(moves);
+			let score = setRating(moves).score;
+			setTimeout(()=> {
+				endGame(moves, score);
+			}, 500);
+	  }	
+	});
 };
 
-// Removes last start from remaining stars, updates modal HTML
-function removeStar() {
-    $(".fa-star").last().attr("class", "fa fa-star-o");
-    numStars--;
-    $(".num-stars").text(String(numStars));
-    };
-
-// Restores star icons to 3 stars, updates modal HTML
-function resetStars() {
-    $(".fa-star-o").attr("class", "fa fa-star");
-    numStars = 3;
-    $(".num-stars").text(String(numStars));
-};
-
-// Updates number of moves in the HTML, removes star is necessary based on difficulty variables
-function updateMoveCounter() {
-    $(".moves").text(moveCounter);
-
-    if (moveCounter === hard || moveCounter === medium) {
-        removeStar();
+// Bind the restart click event
+// Restart the Memory Game
+// Open Popup for showing required details 
+// On configuaration, show default view
+$restart.bind('click', ()=> {
+  swal({
+    allowEscapeKey: false,
+    allowOutsideClick: false,
+    title: 'Are you sure?',
+    text: "Your progress will be Lost!",
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#02ccba',
+    cancelButtonColor: '#f95c3c',
+    confirmButtonText: 'Yes, Restart Game!'
+  }).then((isConfirm)=> {
+    if (isConfirm) {
+			clicks = 0;
+			clearInterval(timer);
+      init();
     }
-};
+  })
+});
 
-
-// Checks if card is a valid move (if it not currently matched or open)
-function isValid(card) {
-    return !(card.hasClass("open") || card.hasClass("match"));
-};
-
-// Returns whether or not currently open cards match
-function checkMatch() {
-    if (open[0].children().attr("class")===open[1].children().attr("class")) {
-        return true;
-    } else {
-        return false;
-    }
-};
-
-// Returns win condition
-function hasWon() {
-    if (matched === 16) {
-        return true;
-    } else {
-        return false;
-    }
-};
-
-// Sets currently open cards to the match state, checks win condition
-var setMatch = function() {
-    open.forEach(function(card) {
-        card.addClass("match");
-    });
-    open = [];
-    matched += 2;
-
-    if (hasWon()) {
-        clearInterval(timer.clearTime);
-        showModal();
-    }
-};
-// Sets currently open cards back to default state
-var resetOpen = function() {
-    open.forEach(function(card) {
-        card.toggleClass("open");
-        card.toggleClass("show");
-    });
-    open = [];
-};
-
-// Sets selected card to the open and shown state
-function openCard(card) {
-    if (!card.hasClass("open")) {
-        card.addClass("open");
-        card.addClass("show");
-        open.push(card);
-    }
-};
-
-// Toggles win modal on
-function showModal() {
-    modal.css("display", "block");
-};
-
-/*
- * Event callback functions
- */
-
-// Resets all game state variables and resets all required HTML to default state
-var resetGame = function() {
-    open = [];
-    matched = 0;
-    moveCounter = 0;
-    resetTimer();
-    updateMoveCounter();
-    $(".card").attr("class", "card");
-    updateCards();
-    resetStars();
-};
-
-// Handles primary game logic of game
-var onClick = function() {
-    if (isValid( $(this) )) {
-
-        if (open.length === 0) {
-            openCard( $(this) );
-
-        } else if (open.length === 1) {
-            openCard( $(this) );
-            moveCounter++;
-            updateMoveCounter();
-
-            if (checkMatch()) {
-                setTimeout(setMatch, 300);
-
-            } else {
-                setTimeout(resetOpen, 700);
-
-            }
-        }
-    }
-};
-
-// Resets game state and toggles win modal display off
-var playAgain = function() {
-    resetGame();
-    modal.css("display", "none");
-};
-
-/*
- * Initalize event listeners
- */
-
-$(".card").click(onClick);
-$(".restart").click(resetGame);
-$(".play-again").click(playAgain);
-
-// Provides a randomized game board on page load
-$(updateCards);
+// Initialize the Memory Game
+init();
